@@ -6,6 +6,8 @@ const morgan = require('morgan');
 const cors = require('cors');
 const helmet = require('helmet');
 const { NODE_ENV } = require('./config');
+const logger = require('./logger');
+const bookmarkRouter = require('./bookmarks/bookmark-router');
 
 const app = express();
 
@@ -16,6 +18,19 @@ const morganOption = (NODE_ENV === 'production')
 app.use(morgan(morganOption));
 app.use(helmet());
 app.use(cors());
+app.use(express.json());
+
+app.use(function validateBearerToken(req, res, next){
+  const apiToken = process.env.API_TOKEN;
+  const authToken = req.get('Authorization');
+
+  if(!authToken || authToken.split(' ')[1] !== apiToken){
+    logger.error(`Unauthorized request to path: ${req.path}`);
+    return res.status(401).json({ error: 'Unauthorized request'});
+  }
+
+  next();
+});
 
 app.use(function errorHandler(error, req, res, next){
   let response;
@@ -31,5 +46,7 @@ app.use(function errorHandler(error, req, res, next){
 app.get('/', (req, res)=>{
   res.send('Hello boilerplate!');
 });
+
+app.use(bookmarkRouter);
 
 module.exports = app;
